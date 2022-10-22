@@ -12,8 +12,10 @@
 //!     repo.commit("Linus Torvalds", "torvalds@example.com", "Some commit message").unwrap();
 //!
 //! let _packfile = PackFile::new(&entries);
-//! // ... packfile can then be encoded within a [`SidebandData`] to send the data to a client
 //! ```
+//!
+//! The generated packfile can then be encoded within a [`SidebandData`] to send the data to a
+//! client
 //!
 //! [Git Packfiles]: https://git-scm.com/book/en/v2/Git-Internals-Packfiles
 //! [`SidebandData`]: crate::codec::Codec::SidebandData
