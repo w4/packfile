@@ -1,3 +1,5 @@
+# Packfile [![Crate](https://img.shields.io/crates/v/packfile.svg)](https://crates.io/crates/packfile) [![API](https://docs.rs/packfile/badge.svg)](https://docs.rs/packfile)
+
 `packfile` is a simple library providing utilities to generate [Git Packfiles] in memory.
 
 Usage:
