@@ -99,7 +99,7 @@ impl GitRepository {
         let commit_user = CommitUserInfo {
             name,
             email,
-            time: time::OffsetDateTime::now_utc(),
+            time: time::OffsetDateTime::UNIX_EPOCH,
         };
 
         let commit = PackFileEntry::Commit(Commit {
