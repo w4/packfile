@@ -8,7 +8,6 @@ use std::ops::RangeInclusive;
 
 use bytes::{Buf, Bytes, BytesMut};
 use tokio_util::codec;
-use tracing::instrument;
 
 use crate::{packet_line::PktLine, Error};
 
@@ -40,7 +39,7 @@ impl codec::Decoder for GitCodec {
     type Item = GitCommand;
     type Error = Error;
 
-    #[instrument(skip(self, src), err)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, src), err))]
     fn decode(&mut self, src: &mut bytes::BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         loop {
             if src.len() < 4 {

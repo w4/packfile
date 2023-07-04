@@ -12,7 +12,6 @@ use std::{
 use bytes::{BufMut, Bytes, BytesMut};
 use flate2::{write::ZlibEncoder, Compression};
 use sha1::Digest;
-use tracing::instrument;
 
 use crate::{util::ArcOrCowStr, Error};
 
@@ -44,7 +43,10 @@ impl<'a> PackFile<'a> {
         20
     }
 
-    #[instrument(skip(self, original_buf), err)]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip(self, original_buf), err)
+    )]
     pub fn encode_to(&self, original_buf: &mut BytesMut) -> Result<(), Error> {
         let mut buf = original_buf.split_off(original_buf.len());
         buf.reserve(Self::header_size() + Self::footer_size());
@@ -84,7 +86,7 @@ pub struct Commit {
 }
 
 impl Commit {
-    #[instrument(skip(self, out), err)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, out), err))]
     fn encode_to(&self, out: &mut BytesMut) -> Result<(), Error> {
         let mut tree_hex = [0_u8; 20 * 2];
         hex::encode_to_slice(self.tree, &mut tree_hex).map_err(Error::EncodeTreeHash)?;
@@ -170,7 +172,7 @@ pub struct TreeItem {
 
 // `[mode] [name]\0[hash]`
 impl TreeItem {
-    #[instrument(skip(self, out), err)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, out), err))]
     fn encode_to(&self, out: &mut BytesMut) -> Result<(), Error> {
         out.write_str(self.kind.mode())?;
         write!(out, " {}\0", self.name)?;
@@ -223,7 +225,7 @@ pub enum PackFileEntry {
 }
 
 impl PackFileEntry {
-    #[instrument(skip(self, buf))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, buf)))]
     fn write_header(&self, buf: &mut BytesMut) {
         let mut size = self.uncompressed_size();
 
@@ -271,7 +273,10 @@ impl PackFileEntry {
         }
     }
 
-    #[instrument(skip(self, original_out), err)]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip(self, original_out), err)
+    )]
     pub fn encode_to(&self, original_out: &mut BytesMut) -> Result<(), Error> {
         self.write_header(original_out); // TODO: this needs space reserving for it
 
@@ -309,7 +314,7 @@ impl PackFileEntry {
         Ok(())
     }
 
-    #[instrument(skip(self))]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self)))]
     #[must_use]
     pub fn uncompressed_size(&self) -> usize {
         match self {
@@ -319,7 +324,7 @@ impl PackFileEntry {
         }
     }
 
-    #[instrument(skip(self), err)]
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err))]
     pub fn hash(&self) -> Result<HashOutput, Error> {
         let size = self.uncompressed_size();
 
