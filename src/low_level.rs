@@ -319,7 +319,6 @@ impl PackFileEntry {
         }
     }
 
-    // wen const generics for RustCrypto? :-(
     #[instrument(skip(self), err)]
     pub fn hash(&self) -> Result<HashOutput, Error> {
         let size = self.uncompressed_size();
@@ -357,8 +356,8 @@ impl PackFileEntry {
 #[cfg(test)]
 mod test {
     mod packfile_entry {
-        use bytes::{Bytes, BytesMut};
         use crate::low_level::PackFileEntry;
+        use bytes::{Bytes, BytesMut};
 
         #[test]
         fn header_size_bytes_large() {

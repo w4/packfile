@@ -178,3 +178,79 @@ enum TreeItem {
     /// Refers to a nested directory
     Tree(Tree),
 }
+
+#[cfg(test)]
+mod test {
+    use crate::{high_level::GitRepository, low_level::PackFile};
+    use bytes::{Bytes, BytesMut};
+    use std::process::{Command, Stdio};
+    use tempfile::TempDir;
+
+    #[test]
+    fn deterministic() {
+        let mut repo = GitRepository::default();
+        repo.insert(&["a", "b"], "c.txt", Bytes::from("hello world!"))
+            .unwrap();
+        repo.insert(&["c", "d"], "c.txt", Bytes::from("test"))
+            .unwrap();
+        let (hash, packfile) = repo
+            .commit("me", "me@example.com", "initial commit")
+            .unwrap();
+
+        assert_eq!(
+            hex::encode(&hash),
+            "6ba08bda5731edfb2a0a00e602d1dd4bbd9d341c"
+        );
+        insta::assert_debug_snapshot!(packfile);
+    }
+
+    #[test]
+    fn git_verify_pack() {
+        let mut repo = GitRepository::default();
+        repo.insert(&[], "c.txt", Bytes::from(vec![0; 256]))
+            .unwrap();
+        repo.insert(&["e", "f"], "c.txt", Bytes::from("hiya"))
+            .unwrap();
+        repo.insert(&["c", "d"], "c.txt", Bytes::from("hello world!"))
+            .unwrap();
+        let (_hash, packfile) = repo
+            .commit("me", "me@example.com", "initial commit")
+            .unwrap();
+
+        let scratch_dir = TempDir::new().unwrap();
+        let packfile_path = scratch_dir.path().join("example.pack");
+
+        let mut output = BytesMut::new();
+        PackFile::new(&packfile).encode_to(&mut output).unwrap();
+
+        std::fs::write(&packfile_path, &output).unwrap();
+
+        let res = Command::new("git")
+            .arg("index-pack")
+            .arg(&packfile_path)
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+        assert!(res.success());
+
+        let command = Command::new("git")
+            .arg("verify-pack")
+            .arg("-v")
+            .stdout(Stdio::piped())
+            .arg(&packfile_path)
+            .spawn()
+            .unwrap();
+
+        let out = command.wait_with_output().unwrap();
+        assert!(out.status.success(), "git exited non-0");
+
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        insta::with_settings!({filters => vec![
+            (r#"/(.*)/example.pack"#, "/path/to/example.pack")
+        ]}, {
+            insta::assert_snapshot!(stdout);
+        });
+    }
+}
