@@ -251,7 +251,7 @@ impl PackFileEntry {
         }
 
         // write size bytes
-        while size != 0 {
+        loop {
             // read 7 LSBs from the `size` and push them off for the next iteration
             #[allow(clippy::cast_possible_truncation)] // value is masked
             let mut val = (size & 0b111_1111) as u8;
@@ -264,6 +264,10 @@ impl PackFileEntry {
             }
 
             buf.put_u8(val);
+
+            if size == 0 {
+                break;
+            }
         }
     }
 
@@ -347,5 +351,33 @@ impl PackFileEntry {
         }
 
         Ok(sha1::Sha1::digest(&out).into())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    mod packfile_entry {
+        use bytes::{Bytes, BytesMut};
+        use crate::low_level::PackFileEntry;
+
+        #[test]
+        fn header_size_bytes_large() {
+            let entry = PackFileEntry::Blob(Bytes::from(vec![0u8; 16]));
+
+            let mut header = BytesMut::new();
+            entry.write_header(&mut header);
+
+            assert_eq!(header.to_vec(), &[0xb0, 0x01]);
+        }
+
+        #[test]
+        fn header_size_bytes_small() {
+            let entry = PackFileEntry::Blob(Bytes::from(vec![0u8; 15]));
+
+            let mut header = BytesMut::new();
+            entry.write_header(&mut header);
+
+            assert_eq!(header.to_vec(), &[0xbf, 0x00]);
+        }
     }
 }
