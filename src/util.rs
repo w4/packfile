@@ -1,14 +1,22 @@
+use std::hash::Hasher;
 use std::{
     borrow::Cow,
     fmt::{Display, Formatter},
+    hash::Hash,
     ops::Deref,
     sync::Arc,
 };
 
-#[derive(Debug, Hash, Eq)]
+#[derive(Debug, Eq)]
 pub enum ArcOrCowStr {
     Arc(Arc<str>),
     Cow(Cow<'static, str>),
+}
+
+impl Hash for ArcOrCowStr {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        (**self).hash(state);
+    }
 }
 
 impl PartialEq<ArcOrCowStr> for ArcOrCowStr {
