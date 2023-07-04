@@ -145,7 +145,7 @@ impl Tree {
                 },
                 TreeItem::Tree(tree) => LowLevelTreeItem {
                     kind: TreeItemKind::Directory,
-                    sort_name: format!("{}/", name),
+                    sort_name: format!("{name}/"),
                     name,
                     // we're essentially working through our tree from the bottom up,
                     // so we can grab the hash of each directory along the way and

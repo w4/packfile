@@ -331,7 +331,7 @@ impl PackFileEntry {
         let mut out =
             BytesMut::with_capacity(file_prefix.len() + " ".len() + size_len + "\n".len() + size);
 
-        write!(out, "{} {}\0", file_prefix, size)?;
+        write!(out, "{file_prefix} {size}\0")?;
         match self {
             Self::Commit(commit) => {
                 commit.encode_to(&mut out)?;
