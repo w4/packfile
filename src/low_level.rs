@@ -355,6 +355,64 @@ impl PackFileEntry {
 
 #[cfg(test)]
 mod test {
+    mod packfile {
+        use crate::low_level::{
+            Commit, CommitUserInfo, PackFile, PackFileEntry, TreeItem, TreeItemKind,
+        };
+        use bytes::{Bytes, BytesMut};
+
+        fn example() -> Bytes {
+            let blob = PackFileEntry::Blob(Bytes::from("hello world"));
+
+            let tree = PackFileEntry::Tree(vec![TreeItem {
+                kind: TreeItemKind::File,
+                name: "helloworld.txt".into(),
+                hash: blob.hash().unwrap(),
+                sort_name: "helloworld.txt".to_string(),
+            }]);
+
+            let commit = PackFileEntry::Commit(Commit {
+                tree: tree.hash().unwrap(),
+                author: CommitUserInfo {
+                    name: "example",
+                    email: "example@me.com",
+                    time: time::OffsetDateTime::UNIX_EPOCH,
+                },
+                committer: CommitUserInfo {
+                    name: "example",
+                    email: "example@me.com",
+                    time: time::OffsetDateTime::UNIX_EPOCH,
+                },
+                message: "initial commit",
+            });
+
+            let mut out = BytesMut::new();
+
+            PackFile::new(&[blob, tree, commit])
+                .encode_to(&mut out)
+                .unwrap();
+
+            out.freeze()
+        }
+
+        #[test]
+        fn snapshot() {
+            let actual = example();
+            insta::assert_debug_snapshot!(actual);
+        }
+
+        #[test]
+        fn is_readable_by_git() {
+            let stdout = crate::test::verify_pack_file(example());
+
+            insta::with_settings!({filters => vec![
+                (r#"/(.*)/example.pack"#, "/path/to/example.pack")
+            ]}, {
+                insta::assert_snapshot!(stdout);
+            });
+        }
+    }
+
     mod packfile_entry {
         use crate::low_level::PackFileEntry;
         use bytes::{Bytes, BytesMut};
@@ -377,6 +435,171 @@ mod test {
             entry.write_header(&mut header);
 
             assert_eq!(header.to_vec(), &[0xbf, 0x00]);
+        }
+
+        mod commit {
+            use crate::low_level::{Commit, CommitUserInfo, PackFileEntry};
+            use bytes::BytesMut;
+
+            fn example() -> PackFileEntry {
+                PackFileEntry::Commit(Commit {
+                    tree: [0; 20],
+                    author: CommitUserInfo {
+                        name: "author",
+                        email: "author@example.com",
+                        time: time::OffsetDateTime::from_unix_timestamp(1_688_494_158).unwrap(),
+                    },
+                    committer: CommitUserInfo {
+                        name: "committer",
+                        email: "committer@example.com",
+                        time: time::OffsetDateTime::from_unix_timestamp(1_687_494_158).unwrap(),
+                    },
+                    message: "hello world!",
+                })
+            }
+
+            #[test]
+            fn hash() {
+                let commit = example();
+
+                let actual = hex::encode(commit.hash().unwrap());
+                let expected = "0cc33510a70f7e9ad5f35738385d7ace25d0bbf4";
+                assert_eq!(actual, expected);
+            }
+
+            #[test]
+            fn uncompressed_size() {
+                let commit = example();
+
+                let actual = commit.uncompressed_size();
+                let expected = 172;
+                assert_eq!(actual, expected);
+            }
+
+            #[test]
+            fn headers() {
+                let commit = example();
+
+                let mut actual = BytesMut::new();
+                commit.write_header(&mut actual);
+
+                let expected = &[0x9c, 0x0a];
+
+                assert_eq!(actual.to_vec(), expected);
+            }
+
+            #[test]
+            fn full() {
+                let commit = example();
+
+                let mut actual = BytesMut::new();
+                commit.encode_to(&mut actual).unwrap();
+
+                insta::assert_debug_snapshot!(actual);
+            }
+        }
+
+        mod tree {
+            use crate::low_level::{PackFileEntry, TreeItem, TreeItemKind};
+            use bytes::BytesMut;
+
+            fn example() -> PackFileEntry {
+                PackFileEntry::Tree(vec![TreeItem {
+                    kind: TreeItemKind::File,
+                    name: "hello".into(),
+                    hash: [0u8; 20],
+                    sort_name: "/hello".to_string(),
+                }])
+            }
+
+            #[test]
+            fn hash() {
+                let commit = example();
+
+                let actual = hex::encode(commit.hash().unwrap());
+                let expected = "9fc911650c548e4aa7b6dfd085a9347df8743e17";
+                assert_eq!(actual, expected);
+            }
+
+            #[test]
+            fn uncompressed_size() {
+                let commit = example();
+
+                let actual = commit.uncompressed_size();
+                let expected = 33;
+                assert_eq!(actual, expected);
+            }
+
+            #[test]
+            fn headers() {
+                let commit = example();
+
+                let mut actual = BytesMut::new();
+                commit.write_header(&mut actual);
+
+                let expected = &[0xa1, 0x02];
+
+                assert_eq!(actual.to_vec(), expected);
+            }
+
+            #[test]
+            fn full() {
+                let commit = example();
+
+                let mut actual = BytesMut::new();
+                commit.encode_to(&mut actual).unwrap();
+
+                insta::assert_debug_snapshot!(actual);
+            }
+        }
+
+        mod blob {
+            use crate::low_level::PackFileEntry;
+            use bytes::{Bytes, BytesMut};
+
+            fn example() -> PackFileEntry {
+                PackFileEntry::Blob(Bytes::from("hello world"))
+            }
+
+            #[test]
+            fn hash() {
+                let commit = example();
+
+                let actual = hex::encode(commit.hash().unwrap());
+                let expected = "95d09f2b10159347eece71399a7e2e907ea3df4f";
+                assert_eq!(actual, expected);
+            }
+
+            #[test]
+            fn uncompressed_size() {
+                let commit = example();
+
+                let actual = commit.uncompressed_size();
+                let expected = 11;
+                assert_eq!(actual, expected);
+            }
+
+            #[test]
+            fn headers() {
+                let commit = example();
+
+                let mut actual = BytesMut::new();
+                commit.write_header(&mut actual);
+
+                let expected = &[0xbb, 0x00];
+
+                assert_eq!(actual.to_vec(), expected);
+            }
+
+            #[test]
+            fn full() {
+                let commit = example();
+
+                let mut actual = BytesMut::new();
+                commit.encode_to(&mut actual).unwrap();
+
+                insta::assert_debug_snapshot!(actual);
+            }
         }
     }
 }

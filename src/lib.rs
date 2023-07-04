@@ -30,3 +30,40 @@ mod util;
 
 pub use error::Error;
 pub use packet_line::PktLine;
+
+#[cfg(test)]
+mod test {
+    use bytes::Bytes;
+    use std::process::{Command, Stdio};
+    use tempfile::TempDir;
+
+    pub fn verify_pack_file(packed: Bytes) -> String {
+        let scratch_dir = TempDir::new().unwrap();
+        let packfile_path = scratch_dir.path().join("example.pack");
+
+        std::fs::write(&packfile_path, packed).unwrap();
+
+        let res = Command::new("git")
+            .arg("index-pack")
+            .arg(&packfile_path)
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+        assert!(res.success());
+
+        let command = Command::new("git")
+            .arg("verify-pack")
+            .arg("-v")
+            .stdout(Stdio::piped())
+            .arg(&packfile_path)
+            .spawn()
+            .unwrap();
+
+        let out = command.wait_with_output().unwrap();
+        assert!(out.status.success(), "git exited non-0");
+
+        String::from_utf8(out.stdout).unwrap()
+    }
+}

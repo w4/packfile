@@ -183,8 +183,6 @@ enum TreeItem {
 mod test {
     use crate::{high_level::GitRepository, low_level::PackFile};
     use bytes::{Bytes, BytesMut};
-    use std::process::{Command, Stdio};
-    use tempfile::TempDir;
 
     #[test]
     fn deterministic() {
@@ -198,7 +196,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            hex::encode(&hash),
+            hex::encode(hash),
             "6ba08bda5731edfb2a0a00e602d1dd4bbd9d341c"
         );
         insta::assert_debug_snapshot!(packfile);
@@ -217,36 +215,11 @@ mod test {
             .commit("me", "me@example.com", "initial commit")
             .unwrap();
 
-        let scratch_dir = TempDir::new().unwrap();
-        let packfile_path = scratch_dir.path().join("example.pack");
-
         let mut output = BytesMut::new();
         PackFile::new(&packfile).encode_to(&mut output).unwrap();
 
-        std::fs::write(&packfile_path, &output).unwrap();
+        let stdout = crate::test::verify_pack_file(output.freeze());
 
-        let res = Command::new("git")
-            .arg("index-pack")
-            .arg(&packfile_path)
-            .stdout(Stdio::piped())
-            .spawn()
-            .unwrap()
-            .wait()
-            .unwrap();
-        assert!(res.success());
-
-        let command = Command::new("git")
-            .arg("verify-pack")
-            .arg("-v")
-            .stdout(Stdio::piped())
-            .arg(&packfile_path)
-            .spawn()
-            .unwrap();
-
-        let out = command.wait_with_output().unwrap();
-        assert!(out.status.success(), "git exited non-0");
-
-        let stdout = String::from_utf8_lossy(&out.stdout);
         insta::with_settings!({filters => vec![
             (r#"/(.*)/example.pack"#, "/path/to/example.pack")
         ]}, {
