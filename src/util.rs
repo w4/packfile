@@ -5,10 +5,16 @@ use std::{
     sync::Arc,
 };
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug, Hash, Eq)]
 pub enum ArcOrCowStr {
     Arc(Arc<str>),
     Cow(Cow<'static, str>),
+}
+
+impl PartialEq<ArcOrCowStr> for ArcOrCowStr {
+    fn eq(&self, other: &ArcOrCowStr) -> bool {
+        **self == **other
+    }
 }
 
 impl From<Arc<str>> for ArcOrCowStr {
@@ -55,5 +61,38 @@ impl Deref for ArcOrCowStr {
 impl Display for ArcOrCowStr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&**self, f)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    mod arc_or_cow_str {
+        use crate::util::ArcOrCowStr;
+        use std::borrow::Cow;
+        use std::sync::Arc;
+
+        #[test]
+        fn from_arc() {
+            assert_eq!(
+                ArcOrCowStr::from(Arc::from("hello world".to_string())),
+                "hello world".into()
+            );
+        }
+
+        #[test]
+        fn from_cow() {
+            assert_eq!(
+                ArcOrCowStr::from(Cow::Borrowed("hello world")),
+                "hello world".into()
+            );
+        }
+
+        #[test]
+        fn from_string() {
+            assert_eq!(
+                ArcOrCowStr::from("hello world".to_string()),
+                "hello world".into()
+            );
+        }
     }
 }

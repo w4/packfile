@@ -94,9 +94,20 @@ impl codec::Decoder for GitCodec {
 
 #[cfg(test)]
 mod test {
+    use crate::PktLine;
     use bytes::{Bytes, BytesMut};
     use std::fmt::Write;
-    use tokio_util::codec::Decoder;
+    use tokio_util::codec::{Decoder, Encoder};
+
+    #[test]
+    fn encode() {
+        let mut bytes = BytesMut::new();
+        super::Encoder
+            .encode(PktLine::Data(&[1, 2, 3, 4]), &mut bytes)
+            .unwrap();
+
+        assert_eq!(bytes.to_vec(), b"0008\x01\x02\x03\x04");
+    }
 
     #[test]
     fn decode() {

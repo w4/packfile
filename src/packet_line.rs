@@ -69,7 +69,7 @@ mod test {
     #[test]
     fn test_pkt_line() {
         let mut buffer = BytesMut::new();
-        super::PktLine::Data(b"agent=git/2.32.0\n")
+        super::PktLine::from("agent=git/2.32.0\n")
             .encode_to(&mut buffer)
             .unwrap();
         assert_eq!(buffer.as_ref(), b"0015agent=git/2.32.0\n");
