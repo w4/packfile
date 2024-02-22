@@ -2,7 +2,7 @@
 name = "packfile"
 authors = ["Jordan Doyle <jordan@doyle.la>"]
 description = "A simple library providing utilities to generate Git Packfiles in memory and send them to clients"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 license = "WTFPL"
 keywords = ["git", "packfile", "in-memory", "protocol"]

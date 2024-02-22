@@ -226,7 +226,7 @@ mod test {
         let stdout = crate::test::verify_pack_file(output.freeze());
 
         insta::with_settings!({filters => vec![
-            (r#"/(.*)/example.pack"#, "/path/to/example.pack")
+            (r"/(.*)/example.pack", "/path/to/example.pack")
         ]}, {
             insta::assert_snapshot!(stdout);
         });
